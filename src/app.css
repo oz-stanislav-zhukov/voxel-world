@@ -139,8 +139,7 @@ html, body {
 }
 
 #hearts {
-  position: absolute; top: 12px; left: 12px;
-  margin-top: 34px;
+  position: absolute; top: 58px; left: 14px;
   font-size: 15px;
   letter-spacing: 1px;
   padding: 4px 8px;
@@ -152,6 +151,12 @@ html, body {
 .inv-grid--craft { grid-template-columns: repeat(3, 44px); }
 .inv-grid--storage { grid-template-columns: repeat(9, 44px); }
 .inv-grid--main { grid-template-columns: repeat(9, 44px); }
+.inv-grid--hotbar {
+  grid-template-columns: repeat(10, 44px);
+  margin-top: 6px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+}
 .inv-arrow { font-size: 20px; color: var(--color-text-dim); }
 .inv-slot {
   width: 44px; height: 44px;
@@ -359,7 +364,8 @@ html, body {
   cursor: pointer;
   transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
 }
-.seg button:hover { color: var(--color-text); transition: 0s; }
+.seg button:hover { background: var(--color-surface-hover); color: var(--color-text); transition: 0s; }
+.seg button.is-on:hover { background: var(--color-accent); color: var(--color-on-accent); }
 .seg button:active { transform: scale(0.95); transition: 0s; }
 .seg button:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; }
 .seg button.is-on { background: var(--color-accent); color: var(--color-on-accent); }

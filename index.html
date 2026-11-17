@@ -34,6 +34,16 @@
       </div>
     </div>
 
+    <div id="death" class="overlay overlay--dim" hidden>
+      <div class="overlay__box">
+        <h2 class="overlay__title" data-i18n="death.title"></h2>
+        <button id="btnRespawn" class="btn btn--primary"><i class="bi bi-arrow-repeat"></i> <span data-i18n="death.respawn"></span></button>
+        <div class="overlay__links">
+          <button id="btnDeathMenu" class="btn btn--ghost"><i class="bi bi-house"></i> <span data-i18n="death.menu"></span></button>
+        </div>
+      </div>
+    </div>
+
     <div id="pause" class="overlay overlay--dim" hidden>
       <div class="overlay__box">
         <h2 class="overlay__title" data-i18n="pause.title"></h2>
@@ -108,7 +118,7 @@
           <div id="craftOut" class="inv-slot inv-slot--out"></div>
         </div>
         <div id="storageGrid" class="inv-grid inv-grid--storage"></div>
-        <div id="invGrid" class="inv-grid inv-grid--main"></div>
+        <div id="hotbarGrid" class="inv-grid inv-grid--hotbar"></div>
       </div>
     </div>
   </div>

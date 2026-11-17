@@ -84,4 +84,8 @@ export function mobDeath() {
   noiseBurst({ dur: 0.3, freq: 400, gain: 0.15, when: 0.05 });
 }
 export function dropItem() { tone({ freq: 500, end: 900, dur: 0.08, gain: 0.12 }); }
+export function pickup() {
+  tone({ freq: 600, end: 1200, dur: 0.07, gain: 0.14 });
+  tone({ freq: 900, end: 1600, dur: 0.06, gain: 0.1, when: 0.05 });
+}
 export function uiClick() { tone({ freq: 700, end: 500, dur: 0.05, gain: 0.08, type: 'square' }); }

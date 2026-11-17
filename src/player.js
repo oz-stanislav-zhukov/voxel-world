@@ -51,8 +51,7 @@ export class Player {
     this.hp -= n;
     if (this.hp <= 0) {
       this.hp = 0;
-      this.dead = true;
-      this.spawn();
+      this.dead = true; // main.js shows the death screen (respawn is a choice)
     }
   }
 

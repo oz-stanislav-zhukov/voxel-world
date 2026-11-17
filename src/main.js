@@ -192,10 +192,8 @@ function updateMining(dt) {
     world.set(x, y, z, B.AIR);
     sfx.breakBlock(b);
     spawnPuff(x + 0.5, y + 0.5, z + 0.5, 8, 0x8b9096);
-    const left = inv.add(dropFor(b), 1);
-    if (left > 0) toast(t('toast.invFull'));
-    else toast(t('toast.broken'));
-    renderHotbar();
+    spawnDrop(dropFor(b), 1, x + 0.5, y + 0.6, z + 0.5);
+    toast(t('toast.broken'));
     rebuildAt(x, z);
     netSendBlock(x, y, z, B.AIR);
     mining = null;
@@ -323,10 +321,8 @@ function syncMobs() {
         spawnPuff(m.pos.x, m.pos.y + 0.7, m.pos.z, 14, 0xf5f5f5); // MC-style white death cloud
         sfx.mobDeath();
         for (const d of mobDrops(m.type)) {
-          const left = inv.add(d.id, d.n);
-          if (left > 0) toast(t('toast.invFull'));
+          spawnDrop(d.id, d.n, m.pos.x + (Math.random() - 0.5) * 0.5, m.pos.y + 0.6, m.pos.z + (Math.random() - 0.5) * 0.5);
         }
-        renderHotbar();
       }
     }
   }
@@ -415,7 +411,8 @@ const inv = new Inventory(36);
 inv.add(B.PLANKS, 32);
 inv.add(B.LOG, 16);
 const invModal = $('modalInv');
-const invGridEl = $('invGrid');
+const invGridEl = $('storageGrid');
+const hotbarGridEl = $('hotbarGrid');
 const craftGridEl = $('craftGrid');
 const craftOutEl = $('craftOut');
 let cursorStack = null;
@@ -455,9 +452,9 @@ function buildCraftGrid(size) {
   for (let i = 0; i < size * size; i++) {
     const el = makeSlotEl();
     const idx = i;
-    el.addEventListener('mousedown', (e) => { e.preventDefault(); clickSlot('craft', idx, e.button, e.shiftKey); if (e.button === 2 && cursorStack) rmbDrag = true; });
+    el.addEventListener('mousedown', (e) => { e.preventDefault(); const had = cursorStack; clickSlot('craft', idx, e.button, e.shiftKey); if (e.button === 2 && cursorStack) rmbDrag = true; else if (e.button === 0 && !had && cursorStack) { lmbDrag = true; lmbDragMoved = false; } });
     el.addEventListener('dblclick', () => collectDoubleClick('craft', idx));
-    el.addEventListener('mouseenter', () => { hoverSlot = { kind: 'craft', i: idx }; if (rmbDrag) dragPlace('craft', idx); });
+    el.addEventListener('mouseenter', () => { hoverSlot = { kind: 'craft', i: idx }; if (rmbDrag) dragPlace('craft', idx); if (lmbDrag) lmbDragMoved = true; });
     el.addEventListener('mouseleave', () => { if (hoverSlot && hoverSlot.i === idx) hoverSlot = null; });
     craftGridEl.appendChild(el);
     craftSlots.push({ el, s: null });
@@ -489,6 +486,8 @@ function renderCraft() {
 // ---------- MC-style inventory interaction ----------
 let hoverSlot = null; // { kind: 'main' | 'craft', i } | null
 let rmbDrag = false; // right-button drag: place one item per slot passed over (MC)
+let lmbDrag = false; // left-button drag: distribute the stack evenly (MC)
+let lmbDragMoved = false; // only distribute if the cursor actually moved
 
 function slotStack(kind, i) {
   return kind === 'main' ? inv.slots[i] : craftSlots[i].s;
@@ -594,6 +593,34 @@ function collectDoubleClick(kind, i) {
   refreshInv();
 }
 
+// LMB-drag: spread the cursor stack evenly across all empty slots (MC)
+function distribute() {
+  if (!cursorStack) return;
+  const id = cursorStack.id;
+  let total = cursorStack.count;
+  let empties = 0;
+  for (let j = 0; j < inv.slots.length; j++) if (!inv.slots[j]) empties++;
+  for (const cs of craftSlots) if (!cs.s) empties++;
+  if (empties <= 0) return;
+  const per = Math.floor(total / empties);
+  const rem = total % empties;
+  let placed = 0;
+  for (let j = 0; j < inv.slots.length && placed < total; j++) {
+    if (!inv.slots[j]) {
+      const n = per + (j < rem ? 1 : 0);
+      if (n > 0) { inv.slots[j] = { id, count: n }; placed += n; }
+    }
+  }
+  for (let ci = 0; ci < craftSlots.length && placed < total; ci++) {
+    if (!craftSlots[ci].s) {
+      const n = per + (ci < rem ? 1 : 0);
+      if (n > 0) { craftSlots[ci].s = { id, count: n }; placed += n; }
+    }
+  }
+  cursorStack = placed < total ? { id, count: total - placed } : null;
+  refreshInv();
+}
+
 // Place a single item from the cursor into a slot (used by RMB-drag)
 function dragPlace(kind, i) {
   if (!cursorStack) return;
@@ -625,7 +652,12 @@ function renderCursor() {
     '<span class="inv-icon" style="background:' + iconBg(cursorStack.id) + '"></span>' +
     (cursorStack.count > 1 ? '<span class="inv-count">' + cursorStack.count + '</span>' : '');
 }
-window.addEventListener('mouseup', () => { rmbDrag = false; });
+window.addEventListener('mouseup', () => {
+  if (lmbDrag) { lmbDrag = false; if (lmbDragMoved) distribute(); } // spread only on a real drag (MC)
+  rmbDrag = false;
+});
+// The browser context menu would interrupt RMB-drag in the inventory
+invModal.addEventListener('contextmenu', (e) => e.preventDefault());
 invModal.addEventListener('mousemove', (e) => {
   const r = invModal.getBoundingClientRect();
   cursorEl.style.left = (e.clientX - r.left + 12) + 'px';
@@ -657,20 +689,23 @@ function collectCraft() {
 craftOutEl.addEventListener('click', collectCraft);
 
 function buildInvGrid() {
+  // Storage (slots 10-35) on top, hotbar (0-9) as a separate strip below
   invGridEl.innerHTML = '';
+  hotbarGridEl.innerHTML = '';
   for (let i = 0; i < inv.slots.length; i++) {
     const el = makeSlotEl();
-    el.addEventListener('mousedown', (e) => { e.preventDefault(); clickSlot('main', i, e.button, e.shiftKey); if (e.button === 2 && cursorStack) rmbDrag = true; });
+    el.addEventListener('mousedown', (e) => { e.preventDefault(); const had = cursorStack; clickSlot('main', i, e.button, e.shiftKey); if (e.button === 2 && cursorStack) rmbDrag = true; else if (e.button === 0 && !had && cursorStack) { lmbDrag = true; lmbDragMoved = false; } });
     el.addEventListener('dblclick', () => collectDoubleClick('main', i));
-    el.addEventListener('mouseenter', () => { hoverSlot = { kind: 'main', i }; if (rmbDrag) dragPlace('main', i); });
+    el.addEventListener('mouseenter', () => { hoverSlot = { kind: 'main', i }; if (rmbDrag) dragPlace('main', i); if (lmbDrag) lmbDragMoved = true; });
     el.addEventListener('mouseleave', () => { if (hoverSlot && hoverSlot.i === i) hoverSlot = null; });
-    invGridEl.appendChild(el);
+    (i < 10 ? hotbarGridEl : invGridEl).appendChild(el);
   }
   renderInvGrid();
 }
 
 function renderInvGrid() {
-  [...invGridEl.children].forEach((el, i) => renderSlotEl(el, inv.slots[i]));
+  [...invGridEl.children].forEach((el, k) => renderSlotEl(el, inv.slots[10 + k]));
+  [...hotbarGridEl.children].forEach((el, k) => renderSlotEl(el, inv.slots[k]));
 }
 
 // (mainClick merged into clickSlot)
@@ -770,6 +805,29 @@ function pauseGame() {
   show(pauseOv);
 }
 
+const deathOv = $('death');
+function die() {
+  state = 'dead';
+  player.clearKeys();
+  mouseDown = false;
+  mining = null;
+  if (document.pointerLockElement) document.exitPointerLock();
+  show(deathOv);
+}
+function respawn() {
+  player.spawn();
+  state = 'play';
+  hide(deathOv);
+  lock();
+}
+function toMainMenu() {
+  state = 'start';
+  hide(deathOv);
+  show(startOv);
+}
+$('btnRespawn').addEventListener('click', respawn);
+$('btnDeathMenu').addEventListener('click', toMainMenu);
+
 function resumeGame() {
   state = 'play';
   hide(pauseOv);
@@ -818,6 +876,7 @@ document.querySelectorAll('.modal__close').forEach((b) => {
 document.addEventListener('pointerlockchange', () => {
   const locked = document.pointerLockElement === renderer.domElement;
   if (!locked && state === 'play' && !modalOpen) pauseGame();
+  if (!locked && state === 'dead') show(deathOv);
   if (locked && state === 'pause') { state = 'play'; hide(pauseOv); }
 });
 
@@ -882,6 +941,7 @@ document.addEventListener('keydown', (e) => {
   if (modalOpen) return;
   if (state !== 'play') {
     if (e.code === 'Enter' && state === 'start') startGame();
+    if (e.code === 'Enter' && state === 'dead') respawn();
     return;
   }
   const canon = keyMap[e.code];
@@ -904,6 +964,87 @@ document.addEventListener('keyup', (e) => {
 // Lost focus (Alt+Tab, click outside): release all held keys so the
 // player does not keep walking inside the menus.
 window.addEventListener('blur', () => { player.clearKeys(); mouseDown = false; mining = null; });
+
+// ---------- Ground drops (MC-style: items fall to the world, walk over to pick up) ----------
+const drops = []; // { mesh, id, n, vel, t }
+function spawnDrop(id, n, x, y, z) {
+  const info = itemInfo(id);
+  const tex = makeIconTexture(id);
+  const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true });
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.24, 0.24), mat);
+  mesh.position.set(x, y, z);
+  mesh.userData.baseY = y;
+  scene.add(mesh);
+  drops.push({ mesh, id, n, vel: { x: (Math.random() - 0.5) * 1.2, y: 2.2, z: (Math.random() - 0.5) * 1.2 }, t: 0 });
+  sfx.dropItem();
+}
+function updateDrops(dt) {
+  for (let i = drops.length - 1; i >= 0; i--) {
+    const d = drops[i];
+    d.t += dt;
+    d.vel.y -= 22 * dt;
+    d.mesh.position.x += d.vel.x * dt;
+    d.mesh.position.y += d.vel.y * dt;
+    d.mesh.position.z += d.vel.z * dt;
+    // Land on the first solid block below (works in caves, not just the surface)
+    if (d.vel.y <= 0) {
+      const bx = Math.floor(d.mesh.position.x), bz = Math.floor(d.mesh.position.z);
+      const by = Math.floor(d.mesh.position.y - 0.15);
+      if (world.solidAt(bx, by, bz)) {
+        d.mesh.position.y = by + 1.15;
+        d.vel.y = 0;
+        d.vel.x *= 0.7;
+        d.vel.z *= 0.7;
+        d.restY = by + 1.15;
+      }
+    }
+    d.mesh.rotation.y += dt * 2.2;
+    if (d.restY) d.mesh.position.y = d.restY + Math.sin(d.t * 3) * 0.03;
+    const dx = d.mesh.position.x - player.pos.x;
+    const dy = d.mesh.position.y - (player.pos.y + 0.6);
+    const dz = d.mesh.position.z - player.pos.z;
+    if (dx * dx + dy * dy + dz * dz < 1.7 * 1.7) {
+      const left = inv.add(d.id, d.n);
+      if (left > 0) continue; // full: leave it on the ground
+      sfx.pickup();
+      scene.remove(d.mesh);
+      d.mesh.geometry.dispose();
+      d.mesh.material.map.dispose();
+      d.mesh.material.dispose();
+      drops.splice(i, 1);
+      renderHotbar();
+    }
+  }
+}
+
+// Q: drop the selected item to the ground (Ctrl+Q: the whole stack)
+function dropSelected(all) {
+  const s = inv.slots[selected];
+  if (!s) return;
+  const n = all ? s.count : 1;
+  s.count -= n;
+  if (s.count <= 0) inv.slots[selected] = null;
+  const f = player.forward;
+  spawnDrop(s.id, n, player.pos.x + f.x * 0.8, player.pos.y + 0.6, player.pos.z + f.z * 0.8);
+  renderHotbar();
+}
+
+// Digits while hovering an inventory slot: shove that stack into the hotbar (MC)
+function shoveToHotbar(idx) {
+  if (!hoverSlot) return;
+  const s = slotStack(hoverSlot.kind, hoverSlot.i);
+  if (!s) return;
+  const target = inv.slots[idx];
+  if (target && target.id === s.id && target.count < STACK_MAX) {
+    const take = Math.min(STACK_MAX - target.count, s.count);
+    target.count += take; s.count -= take;
+    if (s.count <= 0) setSlotStack(hoverSlot.kind, hoverSlot.i, null);
+  } else if (!target) {
+    inv.slots[idx] = s;
+    setSlotStack(hoverSlot.kind, hoverSlot.i, null);
+  }
+  refreshInv();
+}
 
 // Hotbar: scroll the wheel to switch slots.
 window.addEventListener('wheel', (e) => {
@@ -928,6 +1069,7 @@ function blockAction(button) {
   const o = player.eye();
   const d = player.lookDir();
   const hit = raycastVoxel(world, o, d, 7);
+  if (button === 0) swingT = 0.28; // always swing, even at empty air (MC)
   if (!hit) return;
   if (button === 1) {
     // Pick block (survival): select the slot already holding this block
@@ -943,7 +1085,6 @@ function blockAction(button) {
   }
   if (button === 0) {
       mouseDown = true;
-      swingT = 0.28;
       // Attack a mob first (closer than a block)
       const mobHit = mobManager.hitMob({ x: o.x, y: o.y, z: o.z }, { x: d.x, y: d.y, z: d.z }, 3.5);
       if (mobHit) {
@@ -1217,6 +1358,7 @@ function frame(now) {
       toast(t('toast.hurt'));
       damageFlash();
       sfx.hurt();
+      if (player.dead) die();
     });
     syncMobs();
     // Broadcast position ~10 times a second
@@ -1228,6 +1370,7 @@ function frame(now) {
   }
   updateRemote(dt);
   updateParticles(dt);
+  updateDrops(dt);
   if (dmgFlashT > 0) {
     dmgFlashT -= dt;
     dmgFlashEl.style.opacity = Math.max(0, dmgFlashT / 0.45 * 0.55);
@@ -1341,5 +1484,5 @@ function frame(now) {
 requestAnimationFrame(frame);
 
 // Debug/test hook
-window.__voxel = { world, player, state: () => state, chunkMeshes, inv, mobManager, net, scene, blockAction, mineTime, MINE_TIME, getMining: () => mining, setMouseDown: (b) => { mouseDown = b; }, spawnPuff, updateParticles };
+window.__voxel = { world, player, state: () => state, chunkMeshes, inv, mobManager, net, scene, blockAction, mineTime, MINE_TIME, getMining: () => mining, setMouseDown: (b) => { mouseDown = b; }, spawnPuff, updateParticles, spawnDrop, updateDrops, getSwing: () => swingT, die, respawn, toMainMenu };
 window.addEventListener('error', (e) => { window.__lastErr = e.message + ' @' + (e.lineno || '?'); });
