@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Voxel World</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='4' y='12' width='24' height='16' fill='%237a5230'/%3E%3Crect x='4' y='4' width='24' height='10' fill='%235fae4a'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+  <link rel="stylesheet" href="/src/app.css" />
+</head>
+<body>
+  <div id="app">
+    <div id="hud" aria-hidden="true">
+      <div id="crosshair"><span></span></div>
+      <div id="stats" class="panel">FPS: <b id="fps">0</b> &nbsp;|&nbsp; <span id="pos">0, 0, 0</span> &nbsp;|&nbsp; 🕐 <span id="clock">--:--</span></div>
+      <div id="hearts" class="panel" aria-label="Health">❤️❤️❤️❤️❤️</div>
+      <div id="underwater" aria-hidden="true"></div>
+      <div id="dmgFlash" aria-hidden="true"></div>
+      <div id="hotbar"></div>
+      <div id="toast" class="toast"></div>
+    </div>
+
+    <div id="start" class="overlay">
+      <div class="overlay__box">
+        <h1 class="overlay__title">VOXEL WORLD</h1>
+        <p class="overlay__sub" data-i18n="start.sub"></p>
+        <button id="btnStart" class="btn btn--primary"><i class="bi bi-controller"></i> <span data-i18n="start.play"></span></button>
+        <div class="overlay__links">
+          <button id="btnHelpStart" class="btn btn--ghost"><i class="bi bi-question-circle"></i> <span data-i18n="help.title"></span></button>
+          <button id="btnSettingsStart" class="btn btn--ghost"><i class="bi bi-gear"></i> <span data-i18n="settings.title"></span></button>
+        </div>
+      </div>
+    </div>
+
+    <div id="pause" class="overlay overlay--dim" hidden>
+      <div class="overlay__box">
+        <h2 class="overlay__title" data-i18n="pause.title"></h2>
+        <button id="btnResume" class="btn btn--primary"><i class="bi bi-play-fill"></i> <span data-i18n="pause.resume"></span></button>
+        <div class="overlay__links">
+          <button id="btnHelpPause" class="btn btn--ghost"><i class="bi bi-question-circle"></i> <span data-i18n="help.title"></span></button>
+          <button id="btnSettingsPause" class="btn btn--ghost"><i class="bi bi-gear"></i> <span data-i18n="settings.title"></span></button>
+        </div>
+      </div>
+    </div>
+
+    <div id="modalHelp" class="modal" hidden>
+      <div class="modal__box">
+        <header class="modal__head">
+          <h3><i class="bi bi-question-circle"></i> <span data-i18n="help.title"></span></h3>
+          <button class="modal__close" data-close="modalHelp" aria-label="Close"><i class="bi bi-x-lg"></i></button>
+        </header>
+        <div id="helpGrid" class="help-grid"></div>
+      </div>
+    </div>
+
+    <div id="modalSettings" class="modal" hidden>
+      <div class="modal__box">
+        <header class="modal__head">
+          <h3><i class="bi bi-gear"></i> <span data-i18n="settings.title"></span></h3>
+          <button class="modal__close" data-close="modalSettings" aria-label="Close"><i class="bi bi-x-lg"></i></button>
+        </header>
+        <div class="setting-row">
+          <span data-i18n="settings.language"></span>
+          <div class="seg" id="segLang">
+            <button data-lang="ru">RU</button>
+            <button data-lang="en">EN</button>
+          </div>
+        </div>
+        <div class="setting-row">
+          <span data-i18n="settings.theme"></span>
+          <div class="seg" id="segTheme">
+            <button data-theme="dark" data-i18n="settings.dark"></button>
+            <button data-theme="light" data-i18n="settings.light"></button>
+          </div>
+        </div>
+        <div class="setting-row">
+          <span data-i18n="settings.reducedMotion"></span>
+          <button id="tglMotion" class="switch" role="switch" aria-pressed="false"><span class="switch__knob"></span></button>
+        </div>
+        <div class="setting-row">
+          <span data-i18n="settings.sound"></span>
+          <button id="tglSound" class="switch" role="switch" aria-pressed="true"><span class="switch__knob"></span></button>
+        </div>
+        <div class="setting-row">
+          <span data-i18n="settings.volume"></span>
+          <input id="volSlider" type="range" min="0" max="100" value="50" />
+        </div>
+        <div class="setting-row setting-row--keys">
+          <span data-i18n="settings.controls"></span>
+          <div id="keyBinds" class="keybinds"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="modalInv" class="modal" hidden>
+    <div class="modal__box modal__box--inv">
+      <header class="modal__head">
+        <h3><i class="bi bi-bag"></i> <span data-i18n="inv.title"></span></h3>
+        <button class="modal__close" data-close="modalInv" aria-label="Close"><i class="bi bi-x-lg"></i></button>
+      </header>
+      <div id="cursorItem" class="cursor-item" aria-hidden="true"></div>
+      <div class="inv-body">
+        <div class="inv-craft">
+          <div id="craftGrid" class="inv-grid inv-grid--craft"></div>
+          <div class="inv-arrow"><i class="bi bi-arrow-right"></i></div>
+          <div id="craftOut" class="inv-slot inv-slot--out"></div>
+        </div>
+        <div id="storageGrid" class="inv-grid inv-grid--storage"></div>
+        <div id="invGrid" class="inv-grid inv-grid--main"></div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

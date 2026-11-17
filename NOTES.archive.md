@@ -1,0 +1,6 @@
+<!-- replaced 2026-11-16 -->
+[2026-11-16] <minecraft-upgrade> Voxel-world "Minecraft-like" upgrade (2026-11-16): DONE — infinite lazy chunks (world.js generateChunk, edits Map, WATER_LEVEL=18), texture atlas (textures.js, UVs in buildChunkMesh incl. water wuv), ores in stone gen, day/night (daynight.js: DAY_LENGTH=600s, sun/moon/stars meshes in main.js, clock HUD #clock), mobs (mobs.js MobManager: cows day, zombies night chase+burn, player hp=20 + hearts HUD #hearts, LMB attacks mobs), underwater overlay #underwater. IN PROGRESS — Phase 5 inventory/crafting: src/inventory.js written (Inventory, ITEMS 101-104, dropFor, RECIPES, matchCraft). REMAINING: wire E-key inventory modal in main.js (2x2 player grid + 3x3 when table nearby + 27 storage, hotbar = slots 0-9, drops via dropFor on break, add() on craft), modal markup in index.html, styles in app.css, i18n keys item.coal/iron/gold/diamond + inv.title in ru/en, tests in test/smoke.mjs, then node test/smoke.mjs + npm run build (node at C:\Program Files\nodejs, add to PATH), browser check at localhost:8130 (dev server session s_8af64f0d). Note: browser tab visibility=hidden pauses rAF — FPS 0 there is normal.
+
+<!-- replaced 2026-11-16 -->
+[2026-11-16] <hotbar scroll> User reported hotbar scrolling is broken; fix is in progress.
+
