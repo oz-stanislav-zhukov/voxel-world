@@ -171,6 +171,27 @@ assert.ok(mob.kb.x > 0, 'knockback away from the attacker');
 assert.strictEqual(mob.hit(100, 0, 0), true, 'big hit kills');
 assert.ok(mob.dead && mob.deathT > 0, 'death animation starts');
 
+// 16. Event bus: on/emit/off, and Player emits damage/death
+const { on, off, emit } = await import('../src/events.js');
+const seen = [];
+const fn = (d) => seen.push(d);
+const un = on('testEvt', fn);
+emit('testEvt', { a: 1 });
+un();
+emit('testEvt', { a: 2 });
+assert.deepStrictEqual(seen, [{ a: 1 }], 'off() unsubscribes');
+const dmgSeen = [];
+const deathSeen = [];
+on('damage', (d) => dmgSeen.push(d));
+on('death', () => deathSeen.push(1));
+const p2 = new Player(world);
+p2.damage(4);
+assert.strictEqual(dmgSeen.length, 1, 'damage event emitted');
+assert.strictEqual(dmgSeen[0].hp, 16, 'damage payload has hp');
+p2.damage(100);
+assert.strictEqual(deathSeen.length, 1, 'death event emitted');
+assert.ok(p2.dead, 'player is dead');
+
 console.log('OK: infinite world, water=' + water + ', logs=' + logs + ', leaves=' + leaves);
 console.log('PASS: all smoke tests');
 

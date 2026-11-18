@@ -6,6 +6,41 @@ export const ATLAS_COLS = 8;
 export const ATLAS_ROWS = 4;
 export const TILE = 16;
 
+// Browser-only: build the atlas canvas + THREE texture + icon helpers.
+// THREE is passed in so this module stays node-safe for tests.
+export function createAtlasAssets(THREE) {
+  const atlasCanvas = document.createElement('canvas');
+  atlasCanvas.width = ATLAS_COLS * TILE;
+  atlasCanvas.height = ATLAS_ROWS * TILE;
+  drawAtlas(atlasCanvas.getContext('2d'));
+  const atlasTex = new THREE.CanvasTexture(atlasCanvas);
+  atlasTex.magFilter = THREE.NearestFilter;
+  atlasTex.minFilter = THREE.NearestFilter;
+  atlasTex.colorSpace = THREE.SRGBColorSpace;
+  const atlasURL = atlasCanvas.toDataURL();
+  function iconBg(id) {
+    const tile = itemTile(id);
+    const col = tile % ATLAS_COLS, row = Math.floor(tile / ATLAS_COLS);
+    const px = col / (ATLAS_COLS - 1) * 100, py = row / (ATLAS_ROWS - 1) * 100;
+    return "url(" + atlasURL + ") " + px + '% ' + py + '% / ' + ATLAS_COLS * 100 + '% ' + ATLAS_ROWS * 100 + '% no-repeat';
+  }
+  const iconTexCache = new Map();
+  function makeIconTexture(id) {
+    if (iconTexCache.has(id)) return iconTexCache.get(id);
+    const c = document.createElement('canvas');
+    c.width = c.height = TILE;
+    const g = c.getContext('2d');
+    const tile = itemTile(id);
+    g.drawImage(atlasCanvas, (tile % ATLAS_COLS) * TILE, Math.floor(tile / ATLAS_COLS) * TILE, TILE, TILE, 0, 0, TILE, TILE);
+    const t = new THREE.CanvasTexture(c);
+    t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter;
+    t.colorSpace = THREE.SRGBColorSpace;
+    iconTexCache.set(id, t);
+    return t;
+  }
+  return { atlasTex, iconBg, makeIconTexture };
+}
+
 function mulberry(seed) {
   let a = seed >>> 0;
   return function () {

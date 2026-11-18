@@ -1,4 +1,7 @@
 // Procedural game sounds via WebAudio (no audio files).
+// Listens to bus events: mineTick, mine, place, hitMob, uiClick, damage,
+// mobDeath, dropItem, pickup.
+import { on } from './events.js';
 let ctx = null;
 let master = null;
 let enabled = true;
@@ -89,3 +92,16 @@ export function pickup() {
   tone({ freq: 900, end: 1600, dur: 0.06, gain: 0.1, when: 0.05 });
 }
 export function uiClick() { tone({ freq: 700, end: 500, dur: 0.05, gain: 0.08, type: 'square' }); }
+
+export function initSound() {
+  on('mineTick', ({ id }) => mine(id));
+  on('mine', ({ id }) => breakBlock(id));
+  on('place', () => place());
+  on('hitMob', () => hitMob());
+  on('uiClick', () => uiClick());
+  on('damage', () => hurt());
+  on('mobDeath', () => mobDeath());
+  on('dropItem', () => dropItem());
+  on('pickup', () => pickup());
+}
+

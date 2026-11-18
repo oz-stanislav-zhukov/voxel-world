@@ -1,5 +1,6 @@
 // First-person controller: pointer-lock look, AABB physics, block editing.
 import { B } from './blocks.js';
+import { emit } from './events.js';
 
 const GRAVITY = 26;
 const JUMP = 8.6;
@@ -49,9 +50,11 @@ export class Player {
   damage(n) {
     if (this.dead) return;
     this.hp -= n;
+    emit('damage', { n, hp: this.hp });
     if (this.hp <= 0) {
       this.hp = 0;
       this.dead = true; // main.js shows the death screen (respawn is a choice)
+      emit('death');
     }
   }
 
